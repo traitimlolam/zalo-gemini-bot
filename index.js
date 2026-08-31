@@ -18,16 +18,11 @@ app.post('/webhook', async (req, res) => {
     const data = req.body;
     console.log("Dữ liệu nhận được:", JSON.stringify(data));
 
-    // Bắt chính xác cấu trúc JSON Zalo gửi về (dựa trên Log)
     const userMessage = data.message?.text || "";
     const chatId = data.message?.chat?.id;
 
-    if (!userMessage || !chatId) {
-      console.log("Không tìm thấy userMessage hoặc chatId");
-      return;
-    }
+    if (!userMessage || !chatId) return;
 
-    // Lọc bỏ cụm @mention
     const cleanMessage = userMessage.replace(/@\S+/g, '').trim();
     if (!cleanMessage) return;
 
@@ -35,9 +30,9 @@ app.post('/webhook', async (req, res) => {
     const result = await model.generateContent(cleanMessage);
     const replyText = result.response.text();
 
-    // 2. Phản hồi lại Zalo
+    // 2. Gửi phản hồi lại Zalo Bot
     const response = await axios.post(
-      `https://openapi.zalo.me/v2.0/oa/message?access_token=${ZALO_BOT_TOKEN}`,
+      `https://bot.zalo.me/api/v1/message?access_token=${ZALO_BOT_TOKEN}`,
       {
         recipient: { chat_id: chatId },
         message: { text: replyText }
