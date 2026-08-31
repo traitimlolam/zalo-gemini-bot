@@ -1,18 +1,17 @@
 const express = require('express');
 const axios = require('axios');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 app.use(express.json());
 
-// Lấy Key từ cấu hình của Render
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const ZALO_BOT_TOKEN = process.env.ZALO_BOT_TOKEN;
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 app.post('/webhook', async (req, res) => {
-  // Báo cho Zalo biết server đã nhận được dữ liệu thành công
   res.sendStatus(200);
 
   try {
@@ -24,16 +23,12 @@ app.post('/webhook', async (req, res) => {
 
     if (!userMessage || !chatId) return;
 
-    // Lọc bỏ cụm @mention tên bot trong tin nhắn
     const cleanMessage = userMessage.replace(/@\S+/g, '').trim();
     if (!cleanMessage) return;
 
-    // 1. Gửi câu hỏi sang cho Gemini AI
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: cleanMessage,
-    });
-    const replyText = response.text;
+    // 1. Gửi câu hỏi sang Gemini
+    const result = await model.generateContent(cleanMessage);
+    const replyText = result.response.text();
 
     // 2. Trả lời kết quả về nhóm Zalo
     await axios.post(`https://openapi.zalo.me/v2.0/oa/message?access_token=${ZALO_BOT_TOKEN}`, {
