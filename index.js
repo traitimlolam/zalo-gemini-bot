@@ -30,14 +30,16 @@ app.post('/webhook', async (req, res) => {
     const result = await model.generateContent(cleanMessage);
     const replyText = result.response.text();
 
-    // 2. Gửi phản hồi lại Zalo Bot
-    const response = await axios.post(
-      `https://openapi.zalo.me/v2.0/oa/message?access_token=${ZALO_BOT_TOKEN}`,
-      {
-        recipient: { chat_id: chatId },
-        message: { text: replyText }
-      }
-    );
+// 2. Gửi câu trả lời về lại Zalo nhóm
+const response = await axios.post(
+  `https://openapi.zalo.me/v2.0/oa/message?access_token=${ZALO_BOT_TOKEN}`,
+  {
+    recipient: { 
+      group_id: chatId // Dùng group_id thay vì chat_id cho nhóm
+    },
+    message: { text: replyText }
+  }
+);
 
     console.log("Kết quả gửi Zalo:", response.data);
 
