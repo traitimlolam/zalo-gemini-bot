@@ -10,7 +10,7 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Hàm gọi AI có cơ chế tự động chuyển mô hình khi bị quá tải
 async function generateResponse(prompt) {
-  const modelsToTry = ['gemini-3.7-flash', 'gemini-3.6-flash'];
+  const modelsToTry = ['gemini-3.6-flash', 'gemini-3.7-flash'];
 
   for (const modelName of modelsToTry) {
     try {
@@ -26,11 +26,17 @@ async function generateResponse(prompt) {
 
 // Gửi tin nhắn qua Zalo Bot API (KHÁC với Zalo OA API)
 // Token nằm trong URL, không dùng header access_token
+const ZALO_MAX_TEXT_LENGTH = 2000;
+
 async function sendZaloMessage(chatId, text) {
   const url = `https://bot-api.zapps.me/bot${ZALO_BOT_TOKEN}/sendMessage`;
+  // Zalo giới hạn tin nhắn tối đa 2000 ký tự, cắt bớt nếu vượt quá
+  const safeText = text.length > ZALO_MAX_TEXT_LENGTH
+    ? text.slice(0, ZALO_MAX_TEXT_LENGTH - 20) + '... (đã rút gọn)'
+    : text;
   return axios.post(url, {
     chat_id: chatId,
-    text: text
+    text: safeText
   });
 }
 
