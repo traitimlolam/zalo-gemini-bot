@@ -32,7 +32,7 @@ app.post('/webhook', async (req, res) => {
 
     // 2. Gửi phản hồi lại Zalo Bot
     const response = await axios.post(
-      `https://bot.zalo.me/api/v1/message?access_token=${ZALO_BOT_TOKEN}`,
+      `https://openapi.zalo.me/v2.0/oa/message?access_token=${ZALO_BOT_TOKEN}`,
       {
         recipient: { chat_id: chatId },
         message: { text: replyText }
