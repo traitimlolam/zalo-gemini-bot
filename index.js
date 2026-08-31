@@ -5,37 +5,46 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const app = express();
 app.use(express.json());
 
-// Lấy các chìa khóa từ biến môi trường trên Render
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const ZALO_BOT_TOKEN = process.env.ZALO_BOT_TOKEN;
 
-// Khởi tạo Gemini AI
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+
+// Hàm gọi AI có cơ chế tự động chuyển mô hình khi bị quá tải 503
+async function generateResponse(prompt) {
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+  
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (err) {
+      console.warn(`Mô hình ${modelName} lỗi/qua tải, đang thử lại...`);
+    }
+  }
+  throw new Error("Tất cả mô hình Gemini hiện đang bận, vui lòng thử lại sau.");
+}
 
 app.post('/webhook', async (req, res) => {
-  // Trả về 200 OK ngay lập tức để Zalo không báo timeout
   res.sendStatus(200);
 
   try {
     const data = req.body;
     console.log("Dữ liệu nhận được:", JSON.stringify(data));
 
-    // Bắt cấu trúc tin nhắn và ID nhóm từ Zalo
     const userMessage = data.message?.text || "";
     const chatId = data.message?.chat?.id;
 
     if (!userMessage || !chatId) return;
 
-    // Loại bỏ thẻ tag @Bot khỏi câu hỏi gửi sang Gemini
     const cleanMessage = userMessage.replace(/@\S+/g, '').trim();
     if (!cleanMessage) return;
 
-    // 1. Gửi câu hỏi sang Gemini AI
-    const result = await model.generateContent(cleanMessage);
-    const replyText = result.response.text();
+    // 1. Gọi Gemini với cơ chế fallback
+    const replyText = await generateResponse(cleanMessage);
 
-    // 2. Gửi phản hồi về nhóm Zalo (Truyền token qua Header)
+    // 2. Gửi phản hồi về Zalo
     const response = await axios.post(
       'https://openapi.zalo.me/v2.0/oa/message',
       {
@@ -50,7 +59,7 @@ app.post('/webhook', async (req, res) => {
       }
     );
 
-    console.log("Kết quả gửi Zalo:", response.data);
+    console.log("Kết quả gửi Zalo thành công:", response.data);
 
   } catch (error) {
     console.error("Lỗi xử lý:", error.response?.data || error.message);
